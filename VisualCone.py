@@ -35,9 +35,9 @@ class VisualCone:
         QA = a0 + (t[0] * vector_a)
         QB = b0 + (t[1] * vector_b)
 
-        return dist, QA, QB
+        return abs(dist), QA, QB
 
-    def get_cone_intersection(self, other, min_dist_threshold=1e-6):
+    def get_cone_intersection(self, other, min_dist_threshold=1e-4):
         XA0 = self.camera_location
         XB0 = other.camera_location
         intersection_points = []

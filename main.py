@@ -73,10 +73,10 @@ if __name__ == "__main__":
     cones = map(create_cone, sorted(glob.glob('data/*.png')))
 
     intersections = []
-    print("Computing intersections...")
-    for cone1 in cones:
-        for cone2 in cones:
-            if cone1 is not cone2:
+    for cone1_num, cone1 in enumerate(cones):
+        for cone2_num, cone2 in enumerate(cones):
+            if cone2_num > cone1_num:
+                print(f"Computing intersections between cone {cone1_num} and cone {cone2_num}")
                 intersections += cone1.get_cone_intersection(cone2)
             print(intersections)
         print(intersections)
