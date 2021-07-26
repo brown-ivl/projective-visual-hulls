@@ -2,13 +2,7 @@ import numpy as np
 import scipy.linalg as lin
 from skimage.segmentation import find_boundaries
 import matplotlib.pyplot as plt
-from multiprocessing import Pool
-import sys
-from itertools import product
-
 from tqdm import tqdm
-import functools
-import itertools
 
 eps = 0.000001
 
@@ -29,7 +23,7 @@ class VisualCone:
         vector_b = (b1 - b0) / np.linalg.norm(b1 - b0)
 
         # find unit direction vector for line C, which is perpendicular to lines A and B
-        vector_c = np.cross(vector_b, vector_a);
+        vector_c = np.cross(vector_b, vector_a)
         vector_c /= np.linalg.norm(vector_c)
 
         # solve the system derived in user2255770's answer from StackExchange: https://math.stackexchange.com/q/1993990
@@ -38,8 +32,8 @@ class VisualCone:
         t = np.linalg.solve(LHS, RHS)
 
         dist = t[2] / np.linalg.norm(vector_c)
-        QA = a0 + (t[0] * (vector_a))
-        QB = b0 + (t[1] * (vector_b))
+        QA = a0 + (t[0] * vector_a)
+        QB = b0 + (t[1] * vector_b)
 
         return dist, QA, QB
 
@@ -61,10 +55,6 @@ class VisualCone:
                 intersection_points.append(distances[sorted_distances[1]])
 
         return intersection_points
-
-    @staticmethod
-    def is_zero(val):
-        return abs(val) <= sys.float_info.epsilon
 
     def display_cone(self):
         print('Displaying cone...')
