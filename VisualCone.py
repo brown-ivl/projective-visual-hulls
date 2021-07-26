@@ -43,7 +43,7 @@ class VisualCone:
 
         return dist, QA, QB
 
-    def get_cone_intersection(self, other, min_dist_threshold=0.00001):
+    def get_cone_intersection(self, other, min_dist_threshold=1e-6):
         XA0 = self.camera_location
         XB0 = other.camera_location
         intersection_points = []
@@ -51,12 +51,13 @@ class VisualCone:
             distances = {}
             for XB1 in other.xyzs:
                 dist, QA, QB = self.get_ray_intersection(XA0, XB0, XA1, XB1)
-                distances[dist] = QA
+                if dist < min_dist_threshold:
+                    distances[dist] = QA
 
             sorted_distances = sorted(distances)
-            if sorted_distances[0] < min_dist_threshold:
+            if len(distances) > 0:
                 intersection_points.append(distances[sorted_distances[0]])
-            if sorted_distances[1] < min_dist_threshold:
+            if len(distances) > 1:
                 intersection_points.append(distances[sorted_distances[1]])
 
         return intersection_points
