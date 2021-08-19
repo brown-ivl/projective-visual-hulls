@@ -67,7 +67,7 @@ def create_cone(inputs):
     img = get_silhouette(img_file)
     # plt.imshow(img, cmap="gray")
     # plt.show()
-    img = cv.resize(img, (img.shape[0], img.shape[1]))
+    img = cv.resize(img, (img.shape[1], img.shape[0]))
     img = np.asarray(img, dtype='float32')
 
     
