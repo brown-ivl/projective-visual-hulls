@@ -78,6 +78,9 @@ class VisualCone:
         ax.set_ylabel('Y Label')
         ax.set_zlabel('Z Label')
 
+        ax.set_xlim([-2,2])
+        ax.set_ylim([-2,2])
+        ax.set_zlim([-2,2])
         print("Displaying plot!")
         plt.show()
 
@@ -92,12 +95,15 @@ class VisualCone:
     def generate_outline(silhouette):
         outlines = find_boundaries(silhouette)
         outlines = outlines.astype(float)
-
+        # plt.imshow(outlines, cmap="gray")
+        # plt.show()
         return outlines
 
     @staticmethod
-    def get_xyz_coordinates(outline, projection_matrix):
+    def get_xyz_coordinates(outline, projection_matrix, num=100):
         indices = np.argwhere(outline == 1)
+        choices = np.random.choice(len(indices), num)
+        indices = indices[choices]
         uvs = list(np.stack((indices[:, 0], indices[:, 1], np.ones(len(indices[:, 0]))), axis=-1))
 
         p_inv = lin.pinv(projection_matrix)

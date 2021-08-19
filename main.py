@@ -1,39 +1,51 @@
 from VisualCone import VisualCone
 import glob
 import numpy as np
-from PIL import Image, ImageFilter
-import linecache
+import cv2 as cv
 import matplotlib.pyplot as plt
 import re
+import json
+import config as c
+import utils
+
+
 
 def get_silhouette(img_file):
-    return Image.open(img_file) \
-        .convert('1') \
-        .filter(ImageFilter.BLUR) \
-        .filter(ImageFilter.MinFilter(3)) \
-        .filter(ImageFilter.MinFilter)
+    img = cv.imread(img_file,0)
+    _, silhouette = cv.threshold(img,254.9,255,cv.THRESH_BINARY)
+    return silhouette
+
+def get_camera_pose(parameter_file):
+    f = open(parameter_file)
+    camera_pose = json.load(f)
+
+    return camera_pose
 
 
-def get_parameter_string(parameter_file, silhouette_num):
-    return linecache.getline(parameter_file, silhouette_num + 2).split()[1:]
+def get_intrinsic_matrix():
+
+    return np.array([[c.focal_length_x, c.axis_skew, c.camera_center_x],
+                     [0, c.focal_length_y, c.camera_center_y],
+                     [0, 0, 1]])
 
 
-def get_intrinsic_matrix(parameter_str):
-    return np.array([[float(parameter_str[0]), float(parameter_str[1]), float(parameter_str[2])],
-                     [float(parameter_str[3]), float(parameter_str[4]), float(parameter_str[5])],
-                     [float(parameter_str[6]), float(parameter_str[7]), float(parameter_str[8])]])
+def get_extrinsic_matrix(camera_pose):
+    p_x, p_y, p_z = camera_pose['position'].values()
+    x,y,z,w = camera_pose['rotation'].values()
 
+    Q = np.array([[1-2*y*y-2*z*z, 2*x*y-2*z*w, 2*x*z+2*y*w],
+                  [2*x*y+2*z*w, 1-2*x*x-2*z*z, 2*y*z-2*x*w],
+                  [2*x*z-2*y*w, 2*y*z+2*x*w, 1-2*x*x-2*y*y]])
 
-def get_extrinsic_matrix(parameter_str):
-    R = np.array([[float(parameter_str[9]), float(parameter_str[10]), float(parameter_str[11])],
-                  [float(parameter_str[12]), float(parameter_str[13]), float(parameter_str[14])],
-                  [float(parameter_str[15]), float(parameter_str[16]), float(parameter_str[17])]])
-    t = np.array([[float(parameter_str[18])], [float(parameter_str[19])], [float(parameter_str[20])]])
+    C = np.array([[p_x], [p_y], [p_z]])
 
+    R = Q.T
+    t = -np.dot(R,C)
     return np.hstack((R, t))
 
 
 def plot_points(points):
+    points = np.array(points)
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
 
@@ -48,20 +60,20 @@ def plot_points(points):
     plt.show()
 
 
-parameter_file = 'data/temple_par.txt'
-angle_file = 'data/temple_ang.txt'
 
 
-def create_cone(img_file):
+def create_cone(inputs):
+    img_file, parameter_file = inputs
     img = get_silhouette(img_file)
-    img = img.resize((img.width//10, img.height//10))
+    # plt.imshow(img, cmap="gray")
+    # plt.show()
+    img = cv.resize(img, (img.shape[0], img.shape[1]))
     img = np.asarray(img, dtype='float32')
 
-    num = int(re.search(r'\d+', img_file).group()) - 1
-
-    parameter_str = get_parameter_string(parameter_file, num)
-    intrinsic_matrix = get_intrinsic_matrix(parameter_str)
-    extrinsic_matrix = get_extrinsic_matrix(parameter_str)
+    
+    camera_pose = get_camera_pose(parameter_file)
+    intrinsic_matrix = get_intrinsic_matrix()
+    extrinsic_matrix = get_extrinsic_matrix(camera_pose)
 
     return VisualCone(intrinsic_matrix, extrinsic_matrix, img)
 
@@ -70,13 +82,17 @@ if __name__ == "__main__":
 
     #    print(intersection(*[Line3D((-2,-1.0,0.0), ()), Line3D((),()]))
     print("Creating cones...")
-    cones = map(create_cone, sorted(glob.glob('data/*.png')))
-
+    inputs = zip(glob.glob('shapenet/*.png'), glob.glob('shapenet/*.json'))
+    cones = list(map(create_cone, sorted(inputs)))
+    point_clouds = utils.get_pc(sorted(glob.glob('nocs/*.png')))
+    utils.display_cones(cones, point_clouds, show_rays=False)
+    # TODO Below part is not completed.
     intersections = []
-    for cone1_num, cone1 in enumerate(cones):
-        for cone2_num, cone2 in enumerate(cones):
-            if cone2_num > cone1_num:
-                print(f"Computing intersections between cone {cone1_num} and cone {cone2_num}")
-                intersections += cone1.get_cone_intersection(cone2)
-            print(intersections)
-        print(intersections)
+   
+    for cone1_num in range(len(cones)):
+        for cone2_num in range(cone1_num+1,len(cones)):
+            print(f"Computing intersections between cone {cone1_num} and cone {cone2_num}")
+            # cones[cone2_num].display_cone()
+            
+            intersections += cones[cone1_num].get_cone_intersection(cones[cone2_num])
+    plot_points(intersections)
