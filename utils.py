@@ -152,7 +152,7 @@ def get_frontier_points(vertices, e):
         a = tengent_previous.dot(e)
         b = tengent_next.dot(e)
 
-        # is a frontier point?
+        # Is this a frontier point?
         if np.dot(a, b)/(np.linalg.norm(a)*np.linalg.norm(b)) == -1.0:
 
             # fuu > 0?
@@ -167,30 +167,29 @@ def get_frontier_points(vertices, e):
 
 
 def get_intersections_indices(l, outline, e):
-
-    intersections_indices = {}
-    # TODO
     # https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
-    # dist = 0.7071
+    intersections_indices = {}
+
     smallest_dist = 0.0
-    tengent = None
+    fv_is_larger_than_0 = None
     ii = None
     for i, x in enumerate(outline):
         dist = abs(np.dot(np.append(x,1), l))/np.sqrt(l[0]**2+l[1]**2)
         
         if dist < 0.71:
-            if np.array_equal(tengent, outline[x]):
+            
+            if np.array_equal(fv_is_larger_than_0, np.dot(outline[x], e) > 0):
                 if dist < smallest_dist:
                     intersections_indices.pop(ii)
                 else:
                     continue
-            
+            # fv > 0?
             if np.dot(outline[x], e) > 0:
                 intersections_indices[i] = True
             if np.dot(outline[x], e) < 0:
                 intersections_indices[i] = False
             smallest_dist = dist
-            tengent = outline[x]
+            fv_is_larger_than_0 = np.dot(outline[x], e) > 0
             ii = i
 
     return intersections_indices
