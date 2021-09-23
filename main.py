@@ -43,3 +43,4 @@ if __name__ == "__main__":
 
     utils.plot_points_branches(branches, len(
         outline_i), len(outline_j), critical_points)
+    utils.display_3D_representation(branches, outline_i, outline_j, cones[0].projection_matrix, cones[1].projection_matrix)

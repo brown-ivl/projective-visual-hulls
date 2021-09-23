@@ -119,6 +119,44 @@ def display_views(image_path, outline_i, outline_j, epipolar_tangencies_i, epipo
     plt.show()
 
 
+def display_3D_representation(branches, outline_i, outline_j, pi, pj):
+    # Use numpy.linalg.lstsq(A, B).
+    A = np.vstack((pi, pj))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+
+    for segment in branches:
+        u0 = segment[0][0]
+        v0 = segment[1][0]
+
+        xi = np.append(list(outline_i.keys())[u0], 1).reshape(-1, 1)
+        xj = np.append(list(outline_j.keys())[v0], 1).reshape(-1, 1)
+
+        B = np.vstack((xi, xj))
+        r = np.linalg.lstsq(A, B)[0]
+        X0 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
+
+        u1 = segment[0][1]
+        v1 = segment[1][1]
+
+        xi = np.append(list(outline_i.keys())[u1], 1).reshape(-1, 1)
+        xj = np.append(list(outline_j.keys())[v1], 1).reshape(-1, 1)
+
+        B = np.vstack((xi, xj))
+        r = np.linalg.lstsq(A, B)[0]
+        X1 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
+
+        ax.plot([X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],
+                [X0[2][0], X1[2][0]], color='black')
+
+    ax.set_xlim([-2, 2])
+    ax.set_ylim([-2, 2])
+    ax.set_zlim([-2, 2])
+
+    plt.show()
+
+
 def create_cone(inputs):
     img_file, parameter_file = inputs
     img = get_silhouette(img_file)
@@ -253,7 +291,7 @@ def get_critical_points(outline_i, outline_j, epipolar_tangencies_i, epipolar_ta
     return critical_points
 
 
-def contains_critical_points(label, critical_points, u, v, previous_u, previous_v):
+def encounter_critical_points(label, critical_points, u, v, previous_u, previous_v):
     points = []
 
     for uu, vv in critical_points:
@@ -334,42 +372,42 @@ def get_nearest_v(branch_labels, intersections_indices_j, previous_v, v_range):
     return v
 
 
-def trace_branch(label, start_critical_point, critical_points, i_outline, j_outline, increment, Fij, eji):
+def trace_branch(label, start_critical_point, critical_points, outline_i, outline_j, increment, Fij, eji):
     branches = []
     u, v = start_critical_point
-    while u < len(i_outline)-1:
+    while u < len(outline_i)-1:
 
         previous_u = u
 
         previous_v = v
         if label == '++':
-            if previous_v == len(j_outline)-1:
+            if previous_v == len(outline_j)-1:
                 previous_v = 0
         else:
             if previous_v == 0:
-                previous_v = len(j_outline)-1
+                previous_v = len(outline_j)-1
 
         u = u + increment
 
-        if u > len(i_outline)-1:
-            u = len(i_outline)-1
+        if u > len(outline_i)-1:
+            u = len(outline_i)-1
 
         lji = np.dot(Fij, np.append(
-            list(i_outline.keys())[u], 1).reshape(-1, 1))
+            list(outline_i.keys())[u], 1).reshape(-1, 1))
         intersections_indices_j = get_intersections_indices(
-            lji, j_outline, eji)
+            lji, outline_j, eji)
 
         v = get_nearest_v(
-            label, intersections_indices_j, previous_v, len(j_outline))
+            label, intersections_indices_j, previous_v, len(outline_j))
         if v is not None:
 
-            first_critical_point = contains_critical_points(
+            first_critical_point = encounter_critical_points(
                 label, critical_points, u, v, previous_u, previous_v)
 
             if first_critical_point is None:
                 branches.append([[previous_u, u], [previous_v, v]])
 
-                if u == len(i_outline)-1:
+                if u == len(outline_i)-1:
 
                     u = 0
             else:
@@ -380,15 +418,15 @@ def trace_branch(label, start_critical_point, critical_points, i_outline, j_outl
                 break
         else:
             if label == '++':
-                first_critical_point = contains_critical_points(
-                    label, critical_points, u, len(j_outline), previous_u, previous_v)
+                first_critical_point = encounter_critical_points(
+                    label, critical_points, u, len(outline_j), previous_u, previous_v)
             else:
-                first_critical_point = contains_critical_points(
+                first_critical_point = encounter_critical_points(
                     label, critical_points, u, 0, previous_u, previous_v)
 
             if first_critical_point is None:
                 branches.append([[previous_u, u], [previous_v, v]])
-                if u == len(i_outline)-1:
+                if u == len(outline_i)-1:
 
                     u = 0
             else:
@@ -400,17 +438,17 @@ def trace_branch(label, start_critical_point, critical_points, i_outline, j_outl
     return branches
 
 
-def trace_branches(critical_points, i_outline, j_outline, increment, Fij, eji):
+def trace_branches(critical_points, outline_i, outline_j, increment, Fij, eji):
 
     branches = []
 
     for critical_point in critical_points:
         if critical_points[critical_point] == '2A' or critical_points[critical_point] == '3A':
             branches += trace_branch('++', critical_point, critical_points,
-                                     i_outline, j_outline, increment, Fij, eji)
+                                     outline_i, outline_j, increment, Fij, eji)
         if critical_points[critical_point] == '2B' or critical_points[critical_point] == '3A':
             branches += trace_branch('+-', critical_point, critical_points,
-                                     i_outline, j_outline, increment, Fij, eji)
+                                     outline_i, outline_j, increment, Fij, eji)
 
     return branches
 
