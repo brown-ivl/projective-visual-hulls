@@ -29,22 +29,7 @@ class VisualCone:
         silhouette = silhouette.astype(np.uint8)
         contours, _ = cv.findContours(
             silhouette, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        
-        
-        # TODO Smooth the contour.
-        # https://stackoverflow.com/questions/37068448/opencv-how-to-smooth-contour-reducing-noise
-        # blank_image = np.zeros((480,640,3), np.uint8)
-        # cv.drawContours(blank_image, contours, 0, (0,255,0), 1)
-        
-        # blank_image = cv.polylines(blank_image, [approx], 
-        #               True, (255, 0, 0), 1)
-        # for p in approx:
-        #     cv.circle(blank_image, p[0], radius=0,
-        #           color=(0, 0, 255), thickness=-1)
-        # plt.imshow(blank_image)
-        # plt.imshow(silhouette, cmap="gray")
-        # plt.show()
-        
+
         outline = np.squeeze(contours[0])
 
         return outline

@@ -85,6 +85,40 @@ def plot_points_branches(branches, u_range, v_range, critical_points):
     plt.show()
 
 
+def display_views(image_path, outline_i, outline_j, epipolar_tangencies_i, epipolar_tangencies_j, Fij, e, critical_points, vertices_i):
+    image = cv.imread(image_path)
+
+    e0 = e[0] / e[2]
+    e1 = e[1] / e[2]
+
+    ei = (e0[0], e1[0])
+    image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+    for x in outline_i:
+        cv.circle(image, x, radius=0,
+                  color=(0, 0, 0), thickness=-1)
+    # for x in vertices_i:
+    #     cv.circle(image, x, radius=0,
+    #             color=(225, 225, 0), thickness=-1)
+    for x in epipolar_tangencies_i:
+        cv.circle(image, x, radius=0,
+                  color=(0, 0, 255), thickness=-1)
+
+        plt.axline(x, ei, linewidth=2)
+
+    for _, x in enumerate(outline_j):
+        if x in epipolar_tangencies_j:
+            lij = np.dot(Fij, np.append(x, 1).reshape(-1, 1)).T[0]
+            slope = -lij[0]/lij[1]
+            plt.axline(ei, slope=slope, c='r', ls='--')
+    # for u, v in critical_points:
+    #     cv.circle(image, list(outline_i.keys())[u], radius=0,
+    #             color=(0, 0, 255), thickness=-1)
+    #     plt.axline(ei, list(outline_i.keys())[u], c='r', ls='--',linewidth=1)
+    plt.imshow(image)
+
+    plt.show()
+
+
 def create_cone(inputs):
     img_file, parameter_file = inputs
     img = get_silhouette(img_file)
@@ -108,7 +142,8 @@ def get_fmatrices_epipoles(pi, pj):
                                                      1), pj[2].reshape(-1, 1)
 
     Fij = np.array([[np.linalg.det(np.hstack((Qi, Ri, Qj, Rj))), np.linalg.det(np.hstack((Ri, Pi, Qj, Rj))), np.linalg.det(np.hstack((Pi, Qi, Qj, Rj)))],
-                    [np.linalg.det(np.hstack((Qi, Ri, Rj, Pj))), np.linalg.det(np.hstack((Ri, Pi, Rj, Pj))), np.linalg.det(np.hstack((Pi, Qi, Rj, Pj)))],
+                    [np.linalg.det(np.hstack((Qi, Ri, Rj, Pj))), np.linalg.det(
+                        np.hstack((Ri, Pi, Rj, Pj))), np.linalg.det(np.hstack((Pi, Qi, Rj, Pj)))],
                     [np.linalg.det(np.hstack((Qi, Ri, Pj, Qj))), np.linalg.det(np.hstack((Ri, Pi, Pj, Qj))), np.linalg.det(np.hstack((Pi, Qi, Pj, Qj)))]])
 
     eij = np.array([np.linalg.det(np.hstack((Pi, Pj, Qj, Rj))), np.linalg.det(np.hstack(
@@ -126,96 +161,92 @@ def get_polygon(outline):
     polygon_outline = {}
     for i, x in enumerate(vertices):
         discrete_line = list(zip(*line(*vertices[i-1], *x)))
-        tengent = get_tengent(vertices[i-1], x)
+        tangent = get_tangent(vertices[i-1], x)
 
         for p in discrete_line[:-1]:
-            polygon_outline[p] = tengent
+            polygon_outline[p] = tangent
     return vertices, polygon_outline
 
 
-def get_tengent(x_previous, x):
+def get_tangent(x_previous, x):
 
-    tengent = np.cross(np.append(x_previous, 1), np.append(x, 1))
+    tangent = np.cross(np.append(x_previous, 1), np.append(x, 1))
 
-    return tengent
+    return tangent
 
 
-def get_frontier_points(vertices, e):
+def get_epipolar_tangencies(vertices, e):
 
-    frontier_points = {}
+    epipolar_tangencies = {}
     for i, x in enumerate(vertices):
         if i + 1 >= len(vertices):
             i = -1
-        tengent_previous = get_tengent(vertices[i-1], x)
-        tengent_next = get_tengent(x, vertices[i+1])
+        tangent_previous = get_tangent(vertices[i-1], x)
+        tangent_next = get_tangent(x, vertices[i+1])
 
-        a = tengent_previous.dot(e)
-        b = tengent_next.dot(e)
+        a = tangent_previous.dot(e)
+        b = tangent_next.dot(e)
 
-        # Is this a frontier point?
+        # Is this an epipolar tangency?
         if np.dot(a, b)/(np.linalg.norm(a)*np.linalg.norm(b)) == -1.0:
 
             # fuu > 0?
             if a < 0 and b > 0:
-                frontier_points[tuple(x)] = True
+                epipolar_tangencies[tuple(x)] = True
             if a > 0 and b < 0:
-                frontier_points[tuple(x)] = False
+                epipolar_tangencies[tuple(x)] = False
 
-    
-
-    return frontier_points
+    return epipolar_tangencies
 
 
 def get_intersections_indices(l, outline, e):
     # https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
     intersections_indices = {}
-
     smallest_dist = 0.0
-    fv_is_larger_than_0 = None
+    tangent = None
     ii = None
     for i, x in enumerate(outline):
-        dist = abs(np.dot(np.append(x,1), l))/np.sqrt(l[0]**2+l[1]**2)
-        
+        dist = abs(np.dot(np.append(x, 1), l))/np.sqrt(l[0]**2+l[1]**2)
+
         if dist < 0.71:
-            
-            if np.array_equal(fv_is_larger_than_0, np.dot(outline[x], e) > 0):
+            if np.array_equal(tangent, outline[x]):
                 if dist < smallest_dist:
                     intersections_indices.pop(ii)
                 else:
                     continue
-            # fv > 0?
+
             if np.dot(outline[x], e) > 0:
                 intersections_indices[i] = True
             if np.dot(outline[x], e) < 0:
                 intersections_indices[i] = False
             smallest_dist = dist
-            fv_is_larger_than_0 = np.dot(outline[x], e) > 0
+            tangent = outline[x]
             ii = i
 
     return intersections_indices
 
 
-def get_critical_points(outline_i, outline_j, frontier_points_i, frontier_points_j, Fij, eij, eji):
+def get_critical_points(outline_i, outline_j, epipolar_tangencies_i, epipolar_tangencies_j, Fij, eij, eji):
     critical_points = {}
     for u, x in enumerate(outline_i):
-        if x in frontier_points_i:
+        if x in epipolar_tangencies_i:
             lji = np.dot(Fij, np.append(x, 1).reshape(-1, 1))
             intersections_indices_j = get_intersections_indices(
                 lji, outline_j, eji)
             for v in intersections_indices_j:
                 # (u0, v0) is a local maximum (resp. minimum) in the v-direction if the signs of fv and fuu are the same (resp.opposite).
-                if intersections_indices_j[v] == frontier_points_i[x]:
+                if intersections_indices_j[v] == epipolar_tangencies_i[x]:
                     critical_points[(u, v)] = '2B'  # local max
                 else:
                     critical_points[(u, v)] = '2A'  # local min
     for v, x in enumerate(outline_j):
-        if x in frontier_points_j:
+        if x in epipolar_tangencies_j:
             lij = np.dot(Fij, np.append(x, 1).reshape(-1, 1))
             intersections_indices_i = get_intersections_indices(
                 lij, outline_i, eij)
             for u in intersections_indices_i:
                 # (u0, v0) is a local maximum (resp. minimum) in the u-direction if the signs of fu and fvv are the same (resp.opposite).
-                if intersections_indices_i[u] == frontier_points_j[x]:
+                if intersections_indices_i[u] == epipolar_tangencies_j[x]:
                     critical_points[(u, v)] = '3B'  # local max
                 else:
                     critical_points[(u, v)] = '3A'  # local min
@@ -223,28 +254,46 @@ def get_critical_points(outline_i, outline_j, frontier_points_i, frontier_points
 
 
 def contains_critical_points(label, critical_points, u, v, previous_u, previous_v):
-    # TODO 
-    first_critical_point = None
-    
+    points = []
+
     for uu, vv in critical_points:
-        if (label == '++' and critical_points[(uu, vv)] in ['2B', '3B'] and (vv > previous_v and uu > previous_u and (vv <= v or uu <= u))) \
-                or (label == '+-' and critical_points[(uu, vv)] in ['2A', '3B'] and (vv < previous_v and uu > previous_u and (vv >= v or uu <= u))):
+        if uu >= previous_u:
+            if label == '++':
+                if critical_points[(uu, vv)] == '2B':
+                    if uu > previous_u and uu <= u:
+                        points.append((uu, vv))
+                elif critical_points[(uu, vv)] == '3B':
+                    if vv > previous_v and vv <= v:
+                        points.append((uu, vv))
+            elif label == '+-':
+                if critical_points[(uu, vv)] == '2A':
+                    if uu > previous_u and uu <= u:
+                        points.append((uu, vv))
+                elif critical_points[(uu, vv)] == '3B':
+                    if vv < previous_v and vv >= v:
+                        points.append((uu, vv))
 
-            # if first_critical_point is not None:
-            #     dist = (uu-previous_u)**2 + \
-            #         (vv-previous_v)**2  # uu - previous_u #
-            #     # first_critical_point[0] - previous_u #
-            #     dist_first = (
-            #         first_critical_point[0]-previous_u)**2+(first_critical_point[1]-previous_v)**2
-            #     if dist < dist_first:
-            #         first_critical_point = (uu, vv)
-            # else:
-            #     first_critical_point = (uu, vv)
-            dist = (uu-previous_u)**2 + (vv-previous_v)**2
-            if dist < 1000:
-                first_critical_point = (uu, vv)
+    if len(points) == 0:
+        first_critical_point = None
+    else:
+        first_u = min([point[0] for point in points])
+        points = sorted([point for point in points if point[0]
+                        == first_u], key=lambda point: point[1])
 
-    print(first_critical_point)
+        if label == '++':
+            list = [point for point in points if point[1] >= previous_v]
+            if len(list) == 0:
+                first_critical_point = None
+            else:
+                first_critical_point = list[0]
+        elif label == '+-':
+            list = [point for point in points if point[1] <= previous_v]
+            if len(list) == 0:
+                first_critical_point = None
+            else:
+                first_critical_point = list[-1]
+
+    # print(first_critical_point)
     return first_critical_point
 
 
@@ -260,16 +309,16 @@ def get_branch_labels(critical_points, u, v):
 
 
 def get_nearest_v(branch_labels, intersections_indices_j, previous_v, v_range):
-    # TODO
+
     v = None
     if len(intersections_indices_j) != 0:
-       
+
         vs_larger = [v for v in intersections_indices_j if v >= previous_v]
         vs_smaller = [v for v in intersections_indices_j if v <= previous_v]
         if branch_labels == '++':
 
             if len(vs_larger) == 0:
-                # pass
+
                 v = v_range-1
             else:
                 v = min(vs_larger)
@@ -277,7 +326,7 @@ def get_nearest_v(branch_labels, intersections_indices_j, previous_v, v_range):
         else:
 
             if len(vs_smaller) == 0:
-                # pass
+
                 v = 0
             else:
                 v = max(vs_smaller)
@@ -304,6 +353,7 @@ def trace_branch(label, start_critical_point, critical_points, i_outline, j_outl
 
         if u > len(i_outline)-1:
             u = len(i_outline)-1
+
         lji = np.dot(Fij, np.append(
             list(i_outline.keys())[u], 1).reshape(-1, 1))
         intersections_indices_j = get_intersections_indices(
@@ -318,7 +368,6 @@ def trace_branch(label, start_critical_point, critical_points, i_outline, j_outl
 
             if first_critical_point is None:
                 branches.append([[previous_u, u], [previous_v, v]])
-                print(u, v)
 
                 if u == len(i_outline)-1:
 
@@ -339,7 +388,6 @@ def trace_branch(label, start_critical_point, critical_points, i_outline, j_outl
 
             if first_critical_point is None:
                 branches.append([[previous_u, u], [previous_v, v]])
-                print(u, v)
                 if u == len(i_outline)-1:
 
                     u = 0
@@ -364,7 +412,6 @@ def trace_branches(critical_points, i_outline, j_outline, increment, Fij, eji):
             branches += trace_branch('+-', critical_point, critical_points,
                                      i_outline, j_outline, increment, Fij, eji)
 
-    # plot_points_branches(branch, len(cones[0].outline), len(cones[1].outline), critical_points)
     return branches
 
 
@@ -372,11 +419,6 @@ def projecting(X, projection_matrix):
     X = np.append(X, 1)
     x = np.dot(projection_matrix, X.reshape(-1, 1))
     return x
-
-# def cal_partial_derivative(x, e):
-#     f = np.linalg.det(np.hstack((x, np.gradient(x.T[0]).reshape(-1, 1), e)))
-
-#     return f
 
 
 def display_cones(cones, point_clouds, show_pc=False, show_rays=True):
