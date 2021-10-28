@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from numpy.lib.function_base import append
 from tk3dv.nocstools import datastructures as ds
 from skimage.draw import line
 import numpy as np
@@ -6,11 +7,13 @@ import cv2 as cv
 import json
 import config as c
 from VisualCone import VisualCone
+from scipy.interpolate import splprep, splev
 
 
 def get_silhouette(img_file):
     img = cv.imread(img_file, 0)
     _, silhouette = cv.threshold(img, 254.9, 255, cv.THRESH_BINARY_INV)
+    silhouette = cv.flip(silhouette, 0)
     return silhouette
 
 
@@ -85,28 +88,24 @@ def plot_points_branches(branches, u_range, v_range, critical_points):
     plt.show()
 
 
-def display_views(image_path, outline_i, outline_j, epipolar_tangencies_i, epipolar_tangencies_j, Fij, e, critical_points, vertices_i):
-    image = cv.imread(image_path)
-
+def display_views(image_path, outline_i, outline_j, epipolar_tangencies_i, epipolar_tangencies_j, Fij, e, critical_points):
+    image = plt.imread(image_path)[::-1]
+    #TODO e position reversed
     e0 = e[0] / e[2]
     e1 = e[1] / e[2]
 
     ei = (e0[0], e1[0])
-    image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-    for x in outline_i:
-        cv.circle(image, x, radius=0,
-                  color=(0, 0, 0), thickness=-1)
-    # for x in vertices_i:
-    #     cv.circle(image, x, radius=0,
-    #             color=(225, 225, 0), thickness=-1)
+    
+    plt.plot(outline_i[:,0], outline_i[:,1], 'bo', ms=1)
+    
     for x in epipolar_tangencies_i:
-        cv.circle(image, x, radius=0,
-                  color=(0, 0, 255), thickness=-1)
+        
+        plt.plot(x[0],x[1], 'ro', ms=4)
 
         plt.axline(x, ei, linewidth=2)
 
     for _, x in enumerate(outline_j):
-        if x in epipolar_tangencies_j:
+        if tuple(x) in epipolar_tangencies_j:
             lij = np.dot(Fij, np.append(x, 1).reshape(-1, 1)).T[0]
             slope = -lij[0]/lij[1]
             plt.axline(ei, slope=slope, c='r', ls='--')
@@ -114,13 +113,14 @@ def display_views(image_path, outline_i, outline_j, epipolar_tangencies_i, epipo
     #     cv.circle(image, list(outline_i.keys())[u], radius=0,
     #             color=(0, 0, 255), thickness=-1)
     #     plt.axline(ei, list(outline_i.keys())[u], c='r', ls='--',linewidth=1)
-    plt.imshow(image)
-
+    plt.imshow(image, origin='lower')
+    
     plt.show()
 
 
 def display_3D_representation(branches, outline_i, outline_j, pi, pj):
     # Use numpy.linalg.lstsq(A, B).
+    points = []
     A = np.vstack((pi, pj))
 
     fig = plt.figure()
@@ -129,38 +129,42 @@ def display_3D_representation(branches, outline_i, outline_j, pi, pj):
     for segment in branches:
         u0 = segment[0][0]
         v0 = segment[1][0]
-
-        xi = np.append(list(outline_i.keys())[u0], 1).reshape(-1, 1)
-        xj = np.append(list(outline_j.keys())[v0], 1).reshape(-1, 1)
-
-        B = np.vstack((xi, xj))
-        r = np.linalg.lstsq(A, B)[0]
-        X0 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
-
         u1 = segment[0][1]
         v1 = segment[1][1]
+        if u0 and v0 and u1 and v1:
+            xi = np.append(outline_i[u0], 1).reshape(-1, 1)
+            xj = np.append(outline_j[v0], 1).reshape(-1, 1)
 
-        xi = np.append(list(outline_i.keys())[u1], 1).reshape(-1, 1)
-        xj = np.append(list(outline_j.keys())[v1], 1).reshape(-1, 1)
+            B = np.vstack((xi, xj))
+            r = np.linalg.lstsq(A, B)[0]
+            X0 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
 
-        B = np.vstack((xi, xj))
-        r = np.linalg.lstsq(A, B)[0]
-        X1 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
+        
+        
+            xi = np.append(outline_i[u1], 1).reshape(-1, 1)
+            xj = np.append(outline_j[v1], 1).reshape(-1, 1)
 
-        ax.plot([X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],
-                [X0[2][0], X1[2][0]], color='black')
+            B = np.vstack((xi, xj))
+            r = np.linalg.lstsq(A, B)[0]
+            X1 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
 
-    ax.set_xlim([-2, 2])
-    ax.set_ylim([-2, 2])
-    ax.set_zlim([-2, 2])
+            ax.plot([X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],
+            [X0[2][0], X1[2][0]], color='black')
+            points.append([[X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],[X0[2][0], X1[2][0]]])
+
+    # ax.set_xlim([-2, 2])
+    # ax.set_ylim([-2, 2])
+    # ax.set_zlim([-2, 2])
 
     plt.show()
+    return points
 
 
 def create_cone(inputs):
     img_file, parameter_file = inputs
     img = get_silhouette(img_file)
-    # plt.imshow(img, cmap="gray")
+    # plt.imshow(img, cmap="gray", origin='lower')
+    
     # plt.show()
     img = cv.resize(img, (img.shape[1], img.shape[0]))
     img = np.asarray(img, dtype='float32')
@@ -192,19 +196,18 @@ def get_fmatrices_epipoles(pi, pj):
     return Fij, eij, eji
 
 
-def get_polygon(outline):
-    epsilon = 0.002*cv.arcLength(outline, True)
-    vertices = cv.approxPolyDP(outline, epsilon, True)
-    vertices = np.squeeze(vertices)
-    polygon_outline = {}
-    for i, x in enumerate(vertices):
-        discrete_line = list(zip(*line(*vertices[i-1], *x)))
-        tangent = get_tangent(vertices[i-1], x)
-
-        for p in discrete_line[:-1]:
-            polygon_outline[p] = tangent
-    return vertices, polygon_outline
-
+def process_regular_parameterization(outline):
+    
+    tck, u = splprep([outline[:,0], outline[:,1]], s=30, per=3)
+    u = np.arange(0,1,1/500)
+    parameterized_outline = splev(u, tck)
+    # fig, ax = plt.subplots()
+    # ax.plot(parameterized_outline[0], parameterized_outline[1], 'ro')
+    # ax.set_xlim([0, 640])
+    # ax.set_ylim([0, 480])
+    # plt.show()
+    parameterized_outline = np.array(parameterized_outline).T
+    return u, parameterized_outline
 
 def get_tangent(x_previous, x):
 
@@ -213,14 +216,14 @@ def get_tangent(x_previous, x):
     return tangent
 
 
-def get_epipolar_tangencies(vertices, e):
+def get_epipolar_tangencies(outline, e):
 
     epipolar_tangencies = {}
-    for i, x in enumerate(vertices):
-        if i + 1 >= len(vertices):
+    for i, x in enumerate(outline):
+        if i + 1 >= len(outline):
             i = -1
-        tangent_previous = get_tangent(vertices[i-1], x)
-        tangent_next = get_tangent(x, vertices[i+1])
+        tangent_previous = get_tangent(outline[i-1], x)
+        tangent_next = get_tangent(x, outline[i+1])
 
         a = tangent_previous.dot(e)
         b = tangent_next.dot(e)
@@ -240,26 +243,18 @@ def get_epipolar_tangencies(vertices, e):
 def get_intersections_indices(l, outline, e):
     # https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
     intersections_indices = {}
-    smallest_dist = 0.0
-    tangent = None
-    ii = None
+    
     for i, x in enumerate(outline):
-        dist = abs(np.dot(np.append(x, 1), l))/np.sqrt(l[0]**2+l[1]**2)
-
-        if dist < 0.71:
-            if np.array_equal(tangent, outline[x]):
-                if dist < smallest_dist:
-                    intersections_indices.pop(ii)
-                else:
-                    continue
-
-            if np.dot(outline[x], e) > 0:
+        a = np.append(outline[i-1],1).dot(l)
+        b = np.append(x,1).dot(l)
+        if np.dot(a, b)/(np.linalg.norm(a)*np.linalg.norm(b)) == -1.0:
+        
+            # fv > 0
+            if np.dot(get_tangent(outline[i-1], x), e) > 0:
                 intersections_indices[i] = True
-            if np.dot(outline[x], e) < 0:
+            if np.dot(get_tangent(outline[i-1], x), e) < 0:
                 intersections_indices[i] = False
-            smallest_dist = dist
-            tangent = outline[x]
-            ii = i
+            
 
     return intersections_indices
 
@@ -267,24 +262,24 @@ def get_intersections_indices(l, outline, e):
 def get_critical_points(outline_i, outline_j, epipolar_tangencies_i, epipolar_tangencies_j, Fij, eij, eji):
     critical_points = {}
     for u, x in enumerate(outline_i):
-        if x in epipolar_tangencies_i:
+        if tuple(x) in epipolar_tangencies_i:
             lji = np.dot(Fij, np.append(x, 1).reshape(-1, 1))
             intersections_indices_j = get_intersections_indices(
                 lji, outline_j, eji)
             for v in intersections_indices_j:
                 # (u0, v0) is a local maximum (resp. minimum) in the v-direction if the signs of fv and fuu are the same (resp.opposite).
-                if intersections_indices_j[v] == epipolar_tangencies_i[x]:
+                if intersections_indices_j[v] == epipolar_tangencies_i[tuple(x)]:
                     critical_points[(u, v)] = '2B'  # local max
                 else:
                     critical_points[(u, v)] = '2A'  # local min
     for v, x in enumerate(outline_j):
-        if x in epipolar_tangencies_j:
+        if tuple(x) in epipolar_tangencies_j:
             lij = np.dot(Fij, np.append(x, 1).reshape(-1, 1))
             intersections_indices_i = get_intersections_indices(
                 lij, outline_i, eij)
             for u in intersections_indices_i:
                 # (u0, v0) is a local maximum (resp. minimum) in the u-direction if the signs of fu and fvv are the same (resp.opposite).
-                if intersections_indices_i[u] == epipolar_tangencies_j[x]:
+                if intersections_indices_i[u] == epipolar_tangencies_j[tuple(x)]:
                     critical_points[(u, v)] = '3B'  # local max
                 else:
                     critical_points[(u, v)] = '3A'  # local min
@@ -347,7 +342,6 @@ def get_branch_labels(critical_points, u, v):
 
 
 def get_nearest_v(branch_labels, intersections_indices_j, previous_v, v_range):
-
     v = None
     if len(intersections_indices_j) != 0:
 
@@ -393,7 +387,7 @@ def trace_branch(label, start_critical_point, critical_points, outline_i, outlin
             u = len(outline_i)-1
 
         lji = np.dot(Fij, np.append(
-            list(outline_i.keys())[u], 1).reshape(-1, 1))
+            outline_i[u], 1).reshape(-1, 1))
         intersections_indices_j = get_intersections_indices(
             lji, outline_j, eji)
 

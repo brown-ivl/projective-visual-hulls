@@ -11,7 +11,7 @@ class VisualCone:
         self.projection_matrix = intrinsic_matrix.dot(extrinsic_matrix)
 
         self.outline = self.get_outline(silhouette)
-
+        self.silhouette = silhouette
         self.camera_location = self.get_camera_location(extrinsic_matrix)
         self.xyzs = self.get_xyz_coordinates(
             self.outline, self.projection_matrix)
