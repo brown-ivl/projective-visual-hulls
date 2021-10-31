@@ -123,8 +123,8 @@ def display_3D_representation(branches, outline_i, outline_j, pi, pj):
     points = []
     A = np.vstack((pi, pj))
 
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
+    # fig = plt.figure()
+    # ax = fig.add_subplot(projection='3d')
 
     for segment in branches:
         u0 = segment[0][0]
@@ -148,15 +148,15 @@ def display_3D_representation(branches, outline_i, outline_j, pi, pj):
             r = np.linalg.lstsq(A, B)[0]
             X1 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
 
-            ax.plot([X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],
-            [X0[2][0], X1[2][0]], color='black')
+            # ax.plot([X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],
+            # [X0[2][0], X1[2][0]], color='black')
             points.append([[X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],[X0[2][0], X1[2][0]]])
 
     # ax.set_xlim([-2, 2])
     # ax.set_ylim([-2, 2])
     # ax.set_zlim([-2, 2])
 
-    plt.show()
+    # plt.show()
     return points
 
 
