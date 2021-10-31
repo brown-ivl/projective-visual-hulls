@@ -1,7 +1,5 @@
 import matplotlib.pyplot as plt
-from numpy.lib.function_base import append
 from tk3dv.nocstools import datastructures as ds
-from skimage.draw import line
 import numpy as np
 import cv2 as cv
 import json
@@ -131,26 +129,26 @@ def display_3D_representation(branches, outline_i, outline_j, pi, pj):
         v0 = segment[1][0]
         u1 = segment[0][1]
         v1 = segment[1][1]
-        if u0 is not None and v0 is not None and u1 is not None and v1 is not None:
-            xi = np.append(outline_i[u0], 1).reshape(-1, 1)
-            xj = np.append(outline_j[v0], 1).reshape(-1, 1)
-
-            B = np.vstack((xi, xj))
-            r = np.linalg.lstsq(A, B)[0]
-            X0 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
-
         
-        
-            xi = np.append(outline_i[u1], 1).reshape(-1, 1)
-            xj = np.append(outline_j[v1], 1).reshape(-1, 1)
+        xi = np.append(outline_i[u0], 1).reshape(-1, 1)
+        xj = np.append(outline_j[v0], 1).reshape(-1, 1)
 
-            B = np.vstack((xi, xj))
-            r = np.linalg.lstsq(A, B)[0]
-            X1 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
+        B = np.vstack((xi, xj))
+        r = np.linalg.lstsq(A, B)[0]
+        X0 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
 
-            # ax.plot([X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],
-            # [X0[2][0], X1[2][0]], color='black')
-            points.append([[X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],[X0[2][0], X1[2][0]]])
+    
+    
+        xi = np.append(outline_i[u1], 1).reshape(-1, 1)
+        xj = np.append(outline_j[v1], 1).reshape(-1, 1)
+
+        B = np.vstack((xi, xj))
+        r = np.linalg.lstsq(A, B)[0]
+        X1 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
+
+        # ax.plot([X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],
+        # [X0[2][0], X1[2][0]], color='black')
+        points.append([[X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],[X0[2][0], X1[2][0]]])
 
     # ax.set_xlim([-2, 2])
     # ax.set_ylim([-2, 2])
@@ -444,9 +442,92 @@ def trace_branches(critical_points, outline_i, outline_j, increment, Fij, eji):
         if critical_points[critical_point] == '2B' or critical_points[critical_point] == '3A':
             branches += trace_branch('+-', critical_point, critical_points,
                                      outline_i, outline_j, increment, Fij, eji)
+    for branch in branches:
+        u0 = branch[0][0]
+        v0 = branch[1][0]
+        u1 = branch[0][1]
+        v1 = branch[1][1]
+        if u0 is None or v0 is None or u1 is None or v1 is None:
+            branches.remove(branch)
 
     return branches
 
+def oriented_epipolar_transfer(branches, Fik, Fjk, ekj, outline_i, outline_j):
+    # fig, ax = plt.subplots()
+
+    projection = []
+    for segment in branches:
+        u0 = segment[0][0]
+        v0 = segment[1][0]
+        u1 = segment[0][1]
+        v1 = segment[1][1]
+        
+    
+        xi = np.append(outline_i[u0], 1).reshape(-1, 1)
+        xj = np.append(outline_j[v0], 1).reshape(-1, 1)
+
+        xk = np.squeeze(np.sign(np.dot(Fik.dot(xi).T, ekj))*np.cross(Fjk.dot(xj).T, Fik.dot(xi).T))
+        x0 = np.array([xk[0]/xk[2], xk[1]/xk[2]])
+    
+    
+    
+        xi = np.append(outline_i[u1], 1).reshape(-1, 1)
+        xj = np.append(outline_j[v1], 1).reshape(-1, 1)
+
+        xk = np.squeeze(np.sign(np.dot(Fik.dot(xi).T, ekj))*np.cross(Fjk.dot(xj).T, Fik.dot(xi).T))
+        x1 = np.array([xk[0]/xk[2], xk[1]/xk[2]])
+    
+    
+        # ax.plot([x0[0], x1[0]], [x0[1], x1[1]], 'b')
+        projection.append([[x0[0], x1[0]], [x0[1], x1[1]]])
+        
+
+    # plt.imshow(cone_k.silhouette,'gray')
+    # ax.set_xlim([0, 640])
+    # ax.set_ylim([0, 480])
+    
+    # plt.show()
+    # fig, ax = plt.subplots()
+    return projection
+
+def clip(projection, cone_k, branches):
+    clipped = []
+    clipped_branches = []
+    counter = 0
+    for p in projection:
+        x0, x1 = p[0]
+        y0, y1 = p[1]
+        if x0 < 640 and x1 < 640 and y0 < 480 and y1 < 480:
+            
+            if x0 >= 0 and x1 >= 0 and y0 >= 0 and y1 >=0:
+                start = np.array([x0, y0, 1])
+                end = np.array([x1 ,y1 ,1])
+                if cone_k.silhouette[int(y0),int(x0)]==0 and cone_k.silhouette[int(y1),int(x1)]==0:
+                    pass
+                elif cone_k.silhouette[int(y0),int(x0)]!=0 and cone_k.silhouette[int(y1),int(x1)]!=0:
+                    clipped.append(p)
+                    clipped_branches.append(branches[counter])
+                else:
+                    pass
+                    # l = np.cross(start, end)
+                    # intersections_indices = utils.get_intersections_indices(l, outline_k, start)
+                    # for w in intersections_indices:
+                    #     if outline_k[w][0] < max(x0,x1) and outline_k[w][0] > min(x0,x1) and outline_k[w][1] < max(y0,y1) and outline_k[w][1] > min(y0,y1):
+                    #         ws.append(w)
+                    #         if intersections_indices[w] == False:
+                    #             clipped.append([[outline_k[w][0], x1],[outline_k[w][1], y1]])
+                    #         else:
+                    #             clipped.append([[outline_k[w][0], x0],[outline_k[w][1], y0]])
+        counter += 1
+            
+    # for p in clipped:
+    #     ax.plot(p[0],p[1], 'b')
+    # plt.imshow(cone_k.silhouette,'gray')
+    # ax.set_xlim([0, 640])
+    # ax.set_ylim([0, 480])
+    
+    # plt.show()
+    return clipped_branches
 
 def projecting(X, projection_matrix):
     X = np.append(X, 1)
