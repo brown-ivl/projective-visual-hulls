@@ -34,8 +34,7 @@ if __name__ == "__main__":
             outline_i, outline_j, epipolar_tangencies_i, epipolar_tangencies_j, Fij, eij, eji)
         # utils.display_views('gourd/frame_00000000_Color_00.png', outline_i, outline_j,
         #                     epipolar_tangencies_i, epipolar_tangencies_j, Fij, eij, critical_points)
-        # utils.display_views('gourd/frame_00000001_Color_00.png', outline_j, outline_i,
-        #                     epipolar_tangencies_j, epipolar_tangencies_i, Fij, eji, critical_points)
+        
         # 4.1.2. The Tracing Algorithm
         increment = 1
 
@@ -66,13 +65,13 @@ if __name__ == "__main__":
             v0 = segment[1][0]
             u1 = segment[0][1]
             v1 = segment[1][1]
-            if u0 and v0 and u1 and v1:
+            if u0 is not None and v0 is not None and u1 is not None and v1 is not None:
             
                 xi = np.append(outline_i[u0], 1).reshape(-1, 1)
                 xj = np.append(outline_j[v0], 1).reshape(-1, 1)
 
                 xk = np.squeeze(np.sign(np.cross(Fik.dot(xi).T, ekj.T))*np.cross(Fjk.dot(xj).T, Fik.dot(xi).T))
-                x0 = np.array([xk[0]/xk[2], xk[1]/xk[2]])
+                x0 = np.array([abs(xk[0]/xk[2]), abs(xk[1]/xk[2])])
             
             
             
@@ -80,11 +79,11 @@ if __name__ == "__main__":
                 xj = np.append(outline_j[v1], 1).reshape(-1, 1)
 
                 xk = np.squeeze(np.sign(np.cross(Fik.dot(xi).T, ekj.T))*np.cross(Fjk.dot(xj).T, Fik.dot(xi).T))
-                x1 = np.array([xk[0]/xk[2], xk[1]/xk[2]])
+                x1 = np.array([abs(xk[0]/xk[2]), abs(xk[1]/xk[2])])
             
             
-                ax.plot([-x0[0], -x1[0]], [x0[1], x1[1]], 'b')
-                projection.append([[-x0[0], -x1[0]], [x0[1], x1[1]]])
+                ax.plot([x0[0], x1[0]], [x0[1], x1[1]], 'b')
+                projection.append([[x0[0], x1[0]], [x0[1], x1[1]]])
             else:
                 branches.remove(segment)
 
@@ -142,7 +141,7 @@ if __name__ == "__main__":
         if len(branches) != 0:
             points = clip(branches, cones[i-1], cones[j], cones[i])
             all_points += points
-            print(i,j,k)
+            print(i-1,j,i)
         for j in range(0, i):
             branches = trace(cones[i], cones[j])
             for k in range(0, i):

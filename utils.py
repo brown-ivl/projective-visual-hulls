@@ -90,7 +90,7 @@ def plot_points_branches(branches, u_range, v_range, critical_points):
 
 def display_views(image_path, outline_i, outline_j, epipolar_tangencies_i, epipolar_tangencies_j, Fij, e, critical_points):
     image = plt.imread(image_path)[::-1]
-    #TODO e position reversed
+    
     e0 = e[0] / e[2]
     e1 = e[1] / e[2]
 
@@ -131,7 +131,7 @@ def display_3D_representation(branches, outline_i, outline_j, pi, pj):
         v0 = segment[1][0]
         u1 = segment[0][1]
         v1 = segment[1][1]
-        if u0 and v0 and u1 and v1:
+        if u0 is not None and v0 is not None and u1 is not None and v1 is not None:
             xi = np.append(outline_i[u0], 1).reshape(-1, 1)
             xj = np.append(outline_j[v0], 1).reshape(-1, 1)
 
@@ -199,7 +199,7 @@ def get_fmatrices_epipoles(pi, pj):
 def process_regular_parameterization(outline):
     
     tck, u = splprep([outline[:,0], outline[:,1]], s=30, per=3)
-    u = np.arange(0,1,1/500)
+    u = np.arange(0,1,1/1000)
     parameterized_outline = splev(u, tck)
     # fig, ax = plt.subplots()
     # ax.plot(parameterized_outline[0], parameterized_outline[1], 'ro')
@@ -274,7 +274,8 @@ def get_critical_points(outline_i, outline_j, epipolar_tangencies_i, epipolar_ta
                     critical_points[(u, v)] = '2A'  # local min
     for v, x in enumerate(outline_j):
         if tuple(x) in epipolar_tangencies_j:
-            lij = np.dot(Fij, np.append(x, 1).reshape(-1, 1))
+            
+            lij = np.dot(np.append(x, 1),Fij)
             intersections_indices_i = get_intersections_indices(
                 lij, outline_i, eij)
             for u in intersections_indices_i:
