@@ -9,7 +9,7 @@ import utils
 if __name__ == "__main__":
 
     print("Creating cones...")
-    inputs = zip(glob.glob('gourd/*.png'), glob.glob('gourd/*.json'))
+    inputs = zip(glob.glob('cube/*.png'), glob.glob('cube/*.json'))
     cones = list(map(utils.create_cone, sorted(inputs)))
     point_clouds = utils.get_pc(sorted(glob.glob('nocs/*.png')))
     # utils.display_cones(cones[:2], point_clouds, show_rays=True)
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         # 4.1.1. Critical Points of an Intersection Curve.
         u, outline_i = utils.process_regular_parameterization(cone_i.outline)
         v, outline_j = utils.process_regular_parameterization(cone_j.outline)
-        # w, outline_k = utils.process_regular_parameterization(cones[2].outline)
+        
 
         epipolar_tangencies_i = utils.get_epipolar_tangencies(
             outline_i, eij)
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         branches = utils.trace_branches(critical_points,
                                         outline_i, outline_j, increment, Fij, eji)
 
-        print('end')
+        # print('end')
 
         utils.plot_points_branches(branches, len(
             outline_i), len(outline_j), critical_points)
@@ -139,16 +139,20 @@ if __name__ == "__main__":
     branches = []
     for i in range(1,len(cones)):
         if len(branches) != 0:
+            print('start clipping:', i-1,j,i)
             points = clip(branches, cones[i-1], cones[j], cones[i])
             all_points += points
-            print(i-1,j,i)
+            print('end clipping', i-1,j,i)
         for j in range(0, i):
+            print('start tracing:', i,j)
             branches = trace(cones[i], cones[j])
+            print('end tracing:', i,j)
             for k in range(0, i):
                 if k != j:
+                    print('start clipping:', i,j,k)
                     points = clip(branches, cones[i], cones[j], cones[k])
                     all_points += points
-                    print(i,j,k)
+                    print('end clipping', i,j,k)
     fig = plt.figure()
     
     ax = fig.add_subplot(projection='3d')
