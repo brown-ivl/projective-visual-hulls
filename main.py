@@ -55,7 +55,6 @@ def clip(branches, cone_i, cone_j, cone_k):
         cone_j.projection_matrix, cone_k.projection_matrix)
     # fig, ax = plt.subplots()
 
-    # may have bugs
     projection = []
     for segment in branches:
         u0 = segment[0][0]
@@ -67,16 +66,16 @@ def clip(branches, cone_i, cone_j, cone_k):
             xi = np.append(outline_i[u0], 1).reshape(-1, 1)
             xj = np.append(outline_j[v0], 1).reshape(-1, 1)
 
-            xk = np.squeeze(np.sign(np.cross(Fik.dot(xi).T, ekj.T))*np.cross(Fjk.dot(xj).T, Fik.dot(xi).T))
-            x0 = np.array([abs(xk[0]/xk[2]), abs(xk[1]/xk[2])])
+            xk = np.squeeze(np.sign(np.dot(Fik.dot(xi).T, ekj))*np.cross(Fjk.dot(xj).T, Fik.dot(xi).T))
+            x0 = np.array([xk[0]/xk[2], xk[1]/xk[2]])
         
         
         
             xi = np.append(outline_i[u1], 1).reshape(-1, 1)
             xj = np.append(outline_j[v1], 1).reshape(-1, 1)
 
-            xk = np.squeeze(np.sign(np.cross(Fik.dot(xi).T, ekj.T))*np.cross(Fjk.dot(xj).T, Fik.dot(xi).T))
-            x1 = np.array([abs(xk[0]/xk[2]), abs(xk[1]/xk[2])])
+            xk = np.squeeze(np.sign(np.dot(Fik.dot(xi).T, ekj))*np.cross(Fjk.dot(xj).T, Fik.dot(xi).T))
+            x1 = np.array([xk[0]/xk[2], xk[1]/xk[2]])
         
         
             # ax.plot([x0[0], x1[0]], [x0[1], x1[1]], 'b')
@@ -92,7 +91,6 @@ def clip(branches, cone_i, cone_j, cone_k):
     # fig, ax = plt.subplots()
     clipped = []
 
-    # may have bugs
     counter = 0
     for p in projection:
         x0, x1 = p[0]
@@ -134,7 +132,7 @@ def clip(branches, cone_i, cone_j, cone_k):
 if __name__ == "__main__":
     timer0 = time.perf_counter()
     print("Creating cones...")
-    inputs = zip(glob.glob('gourd/*.png'), glob.glob('gourd/*.json'))
+    inputs = zip(glob.glob('gourd5/*.png'), glob.glob('gourd5/*.json'))
     cones = list(map(utils.create_cone, sorted(inputs)))
     point_clouds = utils.get_pc(sorted(glob.glob('nocs/*.png')))
     # utils.display_cones(cones[:2], point_clouds, show_rays=True)

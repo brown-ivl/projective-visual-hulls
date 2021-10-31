@@ -106,7 +106,7 @@ def display_views(image_path, outline_i, outline_j, epipolar_tangencies_i, epipo
 
     for _, x in enumerate(outline_j):
         if tuple(x) in epipolar_tangencies_j:
-            lij = np.dot(Fij, np.append(x, 1).reshape(-1, 1)).T[0]
+            lij = np.dot(np.append(x, 1),Fij)
             slope = -lij[0]/lij[1]
             plt.axline(ei, slope=slope, c='r', ls='--')
     # for u, v in critical_points:
