@@ -34,9 +34,9 @@ def trace(cone_i, cone_j):
 
     # print('end')
 
-    # utils.plot_points_branches(branches, len(
-    #     outline_i), len(outline_j), critical_points)
-    # utils.display_3D_representation(branches, outline_i, outline_j, cone_i.projection_matrix, cone_j.projection_matrix)
+    utils.plot_points_branches(branches, len(
+        outline_i), len(outline_j), critical_points)
+    utils.display_3D_representation(branches, outline_i, outline_j, cone_i.projection_matrix, cone_j.projection_matrix)
 
     return branches
 
@@ -51,7 +51,7 @@ def clip(branches, cone_i, cone_j, cone_k):
     Fjk, ejk, ekj = utils.get_fmatrices_epipoles(
         cone_j.projection_matrix, cone_k.projection_matrix)
 
-    projection = utils.oriented_epipolar_transfer(branches, Fik, Fjk, ekj, outline_i, outline_j)
+    projection = utils.oriented_epipolar_transfer(branches, Fik, Fjk, ekj, outline_i, outline_j, cone_k)
     clipped_branches = utils.clip(projection, cone_k, branches)
     
     points = utils.display_3D_representation(clipped_branches, outline_i, outline_j, cone_i.projection_matrix, cone_j.projection_matrix)

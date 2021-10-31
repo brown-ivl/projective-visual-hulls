@@ -121,8 +121,8 @@ def display_3D_representation(branches, outline_i, outline_j, pi, pj):
     points = []
     A = np.vstack((pi, pj))
 
-    # fig = plt.figure()
-    # ax = fig.add_subplot(projection='3d')
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
 
     for segment in branches:
         u0 = segment[0][0]
@@ -146,15 +146,15 @@ def display_3D_representation(branches, outline_i, outline_j, pi, pj):
         r = np.linalg.lstsq(A, B)[0]
         X1 = np.array([r[0]/r[3], r[1]/r[3], r[2]/r[3]])
 
-        # ax.plot([X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],
-        # [X0[2][0], X1[2][0]], color='black')
+        ax.plot([X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],
+        [X0[2][0], X1[2][0]], color='black')
         points.append([[X0[0][0], X1[0][0]], [X0[1][0], X1[1][0]],[X0[2][0], X1[2][0]]])
 
     # ax.set_xlim([-2, 2])
     # ax.set_ylim([-2, 2])
     # ax.set_zlim([-2, 2])
 
-    # plt.show()
+    plt.show()
     return points
 
 
@@ -452,8 +452,8 @@ def trace_branches(critical_points, outline_i, outline_j, increment, Fij, eji):
 
     return branches
 
-def oriented_epipolar_transfer(branches, Fik, Fjk, ekj, outline_i, outline_j):
-    # fig, ax = plt.subplots()
+def oriented_epipolar_transfer(branches, Fik, Fjk, ekj, outline_i, outline_j, cone_k):
+    fig, ax = plt.subplots()
 
     projection = []
     for segment in branches:
@@ -478,19 +478,20 @@ def oriented_epipolar_transfer(branches, Fik, Fjk, ekj, outline_i, outline_j):
         x1 = np.array([xk[0]/xk[2], xk[1]/xk[2]])
     
     
-        # ax.plot([x0[0], x1[0]], [x0[1], x1[1]], 'b')
+        ax.plot([x0[0], x1[0]], [x0[1], x1[1]], 'b')
         projection.append([[x0[0], x1[0]], [x0[1], x1[1]]])
         
 
-    # plt.imshow(cone_k.silhouette,'gray')
-    # ax.set_xlim([0, 640])
-    # ax.set_ylim([0, 480])
+    plt.imshow(cone_k.silhouette,'gray')
+    ax.set_xlim([0, 640])
+    ax.set_ylim([0, 480])
     
-    # plt.show()
-    # fig, ax = plt.subplots()
+    plt.show()
+    
     return projection
 
 def clip(projection, cone_k, branches):
+    fig, ax = plt.subplots()
     clipped = []
     clipped_branches = []
     counter = 0
@@ -520,13 +521,13 @@ def clip(projection, cone_k, branches):
                     #             clipped.append([[outline_k[w][0], x0],[outline_k[w][1], y0]])
         counter += 1
             
-    # for p in clipped:
-    #     ax.plot(p[0],p[1], 'b')
-    # plt.imshow(cone_k.silhouette,'gray')
-    # ax.set_xlim([0, 640])
-    # ax.set_ylim([0, 480])
+    for p in clipped:
+        ax.plot(p[0],p[1], 'b')
+    plt.imshow(cone_k.silhouette,'gray')
+    ax.set_xlim([0, 640])
+    ax.set_ylim([0, 480])
     
-    # plt.show()
+    plt.show()
     return clipped_branches
 
 def projecting(X, projection_matrix):
